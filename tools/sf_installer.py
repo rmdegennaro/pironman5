@@ -4,6 +4,7 @@ import sys
 import time
 import threading
 import os
+import importlib
 
 class ConfigTxt(object):
     DEFAULT_BOOT_FILE = "/boot/firmware/config.txt"
@@ -389,7 +390,7 @@ class SF_Installer():
 
     def check_git_url(self):
         # Test if github url reachable
-        import requests
+        requests = importlib.import_module('requests')
         for url in self.BACKUP_GIT_URLS:
             try:
                 requests.get(url)
