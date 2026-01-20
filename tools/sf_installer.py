@@ -101,6 +101,7 @@ class SF_Installer():
     PIP_DEPENDENCIES = [
         'pip',
         'setuptools',
+        'requests',
         'build',
     ]
 
