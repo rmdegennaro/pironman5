@@ -4,6 +4,7 @@ import sys
 import time
 import threading
 import os
+import site
 import importlib
 
 class ConfigTxt(object):
@@ -390,6 +391,8 @@ class SF_Installer():
 
     def check_git_url(self):
         # Test if github url reachable
+        site.main()  # 刷新site-packages路径
+        importlib.invalidate_caches()  # 清除导入缓存
         requests = importlib.import_module('requests')
         for url in self.BACKUP_GIT_URLS:
             try:
