@@ -4,6 +4,9 @@ import sys
 import time
 import threading
 import os
+import site
+import glob
+import importlib
 
 class ConfigTxt(object):
     DEFAULT_BOOT_FILE = "/boot/firmware/config.txt"
@@ -85,6 +88,13 @@ class ConfigTxt(object):
 
 class SF_Installer():
     WORK_DIR = '/opt/{name}'
+    GIT_URL = None
+    MAIN_GIT_URL = 'https://github.com/sunfounder/'
+    BACKUP_GIT_URLS = [
+        'https://github.com/sunfounder/',
+        'https://gitee.com/sunfounder/',
+    ]
+
     APT_DEPENDENCIES = [
         'python3-pip',
         'python3-venv',
@@ -94,6 +104,7 @@ class SF_Installer():
     PIP_DEPENDENCIES = [
         'pip',
         'setuptools',
+        'requests',
         'build',
     ]
 
@@ -137,7 +148,6 @@ class SF_Installer():
         description = description or f'Installer for {self.friendly_name}'
         self.parser = argparse.ArgumentParser(description=description)
         self.parser.add_argument('--uninstall', action='store_true', help='Uninstall')
-        self.parser.add_argument('--gitee', action='store_true', help='Use gitee')
         self.parser.add_argument('--no-dep',
                                  action='store_true',
                                  help='Do not install dependencies')
@@ -163,7 +173,7 @@ class SF_Installer():
         self.user = self.get_username()
         self.errors = []
         self.is_running = False
-        self.need_reboot = False
+        self.need_reboot = True # Set to always reboot for auto start service
         self.args = None
 
         self.venv_path = f'{self.work_dir}/venv'
@@ -380,13 +390,31 @@ class SF_Installer():
         for dep in deps:
             self.do(f'Install {dep}', f'{self.venv_pip} install --upgrade {dep}')
 
+    def check_git_url(self):
+        print("Check git URL...")
+        # Test if github url reachable
+        venv_site_pkgs = f"{glob.glob(f'{self.venv_path}/lib/python*')[0]}/site-packages"
+        sys.path.insert(0, venv_site_pkgs)  # 加到查找路径最前面
+        requests = importlib.import_module('requests')
+        for url in self.BACKUP_GIT_URLS:
+            try:
+                requests.get(url)
+                self.GIT_URL = url
+                print(f"- Use {self.GIT_URL} as git URL")
+                return
+            except requests.exceptions.RequestException:
+                print(f"Warning: {url} is not reachable")
+                continue
+        else:
+            print(f"Error: None of {self.BACKUP_GIT_URLS} is reachable")
+            exit(1)
+
     def install_py_src_pkgs(self):
         if len(self.python_source) == 0:
             return
         print("Install Python source packages...")
         for package, url in self.python_source.items():
-            if self.args.gitee:
-                url = url.replace('github.com', 'gitee.com')
+            url = url.replace(self.MAIN_GIT_URL, self.GIT_URL)
             self.install_python_source(package, url)
 
     def setup_auto_start(self):
@@ -507,6 +535,7 @@ class SF_Installer():
         self.install_apt_dep()
         self.create_working_dir()
         self.install_pip_dep()
+        self.check_git_url()
         self.install_py_src_pkgs()
         self.setup_auto_start()
         self.setup_config_txt()
