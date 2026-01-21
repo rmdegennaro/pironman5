@@ -173,7 +173,7 @@ class SF_Installer():
         self.user = self.get_username()
         self.errors = []
         self.is_running = False
-        self.need_reboot = False
+        self.need_reboot = True # Set to always reboot for auto start service
         self.args = None
 
         self.venv_path = f'{self.work_dir}/venv'
